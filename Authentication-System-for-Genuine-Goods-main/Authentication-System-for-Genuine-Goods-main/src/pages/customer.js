@@ -1,0 +1,222 @@
+import React, { useState, useRef } from "react";
+import { QrReader } from "react-qr-reader";
+// import "../style/customer.css"; // Removing old css
+import Manufacturer from "../ethereum/manufacturerIns";
+import factory from "../ethereum/factory";
+import web3 from "../ethereum/web3";
+import { toast } from "react-toastify";
+import { FaQrcode, FaCheckCircle, FaTimesCircle, FaSearch } from "react-icons/fa";
+
+const Qrcode = () => {
+  const [fileResult, setFileResult] = useState("");
+  const [webcamResult, setWebcamResult] = useState("");
+  const [consumerKey, setConsumerKey] = useState("");
+  const [scanning, setScanning] = useState(true);
+  const [productCode, setProductCode] = useState("");
+  const [manufacturerCode, setManufacturerCode] = useState("");
+  const qrRef = useRef(null);
+  const [authenticationres, setAuthenticationRes] = useState("No result");
+  const [active, setActive] = useState("0");
+  const [isLoading, setIsLoading] = useState(false);
+  const [productImageUrl, setProductImageUrl] = useState("");
+  const processedRef = useRef(false);
+
+  // const openDialog = () => { ... } // Unused in this refactor if we rely on webcam
+
+  const scanresult = (result, error) => {
+    if (!!result && !processedRef.current) {
+      processedRef.current = true;
+      setWebcamResult(result?.text);
+      setScanning(false);
+      const results = result.text.split(" ");
+      setManufacturerCode(results[0]);
+      setProductCode(results[1]);
+      toast.success("QR Code Scanned!", { position: "top-center", autoClose: 1500 });
+    }
+  };
+
+  const authenticate = async () => {
+    setIsLoading(true);
+    // 1. Ensure we are on Optimism Sepolia
+    const chainId = await web3.eth.getChainId();
+    if (chainId !== 11155420n) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }],
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          toast.error("Please add OP Sepolia Testnet to MetaMask!", { position: "top-center" });
+        } else {
+          toast.error("Please switch to OP Sepolia Testnet!", { position: "top-center" });
+        }
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const address = await factory.methods
+        .getManufacturerInstance(manufacturerCode.trim())
+        .call();
+
+      if (address === "0x0000000000000000000000000000000000000000") {
+        toast.error("Brand not found on this network!", { position: "top-center", autoClose: 2500 });
+        setIsLoading(false);
+        return;
+      }
+
+      const manuIns = Manufacturer(address);
+      const authres = await manuIns.methods
+        .productVerification(productCode, parseInt(consumerKey))
+        .call();
+
+      if (authres) {
+        setAuthenticationRes("This Product is Generic & Authentic.");
+        setActive("1");
+
+        // Fetch Product Image
+        try {
+          const imgRes = await fetch(`http://localhost:3001/product-image/${productCode}`);
+          if (imgRes.ok) {
+            const imgData = await imgRes.json();
+            setProductImageUrl(imgData.imageUrl);
+          }
+        } catch (e) {
+          console.error("Failed to fetch product image", e);
+        }
+
+      } else {
+        setAuthenticationRes("Alert! This Product might be a Counterfeit.");
+        setActive("2");
+      }
+    } catch {
+      toast.error("Verification Failed. Please check inputs.", { position: "top-center", autoClose: 2500 });
+    }
+    setIsLoading(false);
+  };
+
+  const handleEnter = (event) => {
+    if (event.key === "Enter") {
+      authenticate();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-dark flex flex-col items-center py-12 px-4 text-white">
+      <div className="w-full max-w-2xl text-center mb-10">
+        <FaQrcode className="text-5xl text-brand-orange mx-auto mb-4" />
+        <h2 className="text-4xl font-bold mb-2">Verify Your Kicks</h2>
+        <p className="text-gray-400">Scan the QR code on your product and enter the consumer code to verify authenticity.</p>
+      </div>
+
+      <div className="w-full max-w-4xl bg-brand-darker rounded-2xl border border-brand-gray shadow-2xl p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-10">
+
+        {/* Scanner Section */}
+        <div className="flex flex-col items-center">
+          <div className="w-full h-64 bg-black rounded-xl border-2 border-brand-orange/50 overflow-hidden relative shadow-[0_0_30px_rgba(255,77,77,0.1)]">
+            {scanning ? (
+              <QrReader
+                onResult={scanresult}
+                constraints={{ facingMode: 'environment' }}
+                videoStyle={{ objectFit: 'cover' }}
+                containerStyle={{ width: '100%', height: '100%' }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                <FaCheckCircle className="text-green-500 text-5xl mb-2" />
+                <p className="absolute bottom-4 text-green-500 font-bold">Scanned Successfully</p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setScanning(true);
+              processedRef.current = false;
+            }}
+            className="mt-4 text-sm text-gray-400 hover:text-white underline"
+          >
+            Reset Scanner
+          </button>
+        </div>
+
+        {/* Input Section */}
+        <div className="flex flex-col justify-center space-y-6">
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">Extracted Data</label>
+            <div className="bg-brand-dark p-4 rounded-xl border border-brand-gray space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Brand:</span>
+                <span className="text-white font-mono">{manufacturerCode || "---"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 text-sm">Product ID:</span>
+                <span className="text-white font-mono">{productCode || "---"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-400 text-sm mb-2">Consumer Code (from Box/Tag)</label>
+            <input
+              required
+              type="text"
+              placeholder="e.g., 12345"
+              value={consumerKey}
+              onChange={(e) => setConsumerKey(e.target.value)}
+              onKeyDown={handleEnter}
+              className="w-full bg-brand-dark border border-brand-gray text-white px-5 py-3 rounded-xl focus:border-brand-orange focus:ring-1 focus:ring-brand-orange outline-none transition-all placeholder-gray-600"
+            />
+          </div>
+
+          <button
+            onClick={authenticate}
+            disabled={isLoading || !manufacturerCode || !productCode || !consumerKey}
+            className="w-full bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg transform transition hover:scale-[1.02] duration-300 flex items-center justify-center gap-2"
+          >
+            {isLoading ? "Verifying..." : <><FaSearch /> Verify Authenticity</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Result Section */}
+      <div className="w-full max-w-2xl mt-10">
+        {active === "1" && (
+          <div className="space-y-6">
+            <div className="bg-green-500/10 border border-green-500 rounded-xl p-6 flex items-center gap-4 animate-fadeIn">
+              <FaCheckCircle className="text-4xl text-green-500" />
+              <div>
+                <h3 className="text-xl font-bold text-green-500">Authentic Product</h3>
+                <p className="text-gray-300">{authenticationres}</p>
+              </div>
+            </div>
+
+            {productImageUrl && (
+              <div className="bg-brand-darker border border-brand-gray rounded-xl p-6 flex flex-col items-center animate-fadeIn">
+                <p className="text-gray-400 mb-4 text-sm uppercase tracking-wider">Product Visual</p>
+                <img
+                  src={productImageUrl}
+                  alt="Verified Product"
+                  className="w-full max-w-sm rounded-lg shadow-lg object-cover"
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {active === "2" && (
+          <div className="bg-red-500/10 border border-red-500 rounded-xl p-6 flex items-center gap-4 animate-fadeIn">
+            <FaTimesCircle className="text-4xl text-red-500" />
+            <div>
+              <h3 className="text-xl font-bold text-red-500">Counterfeit Alert</h3>
+              <p className="text-gray-300">{authenticationres}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+};
+
+export default Qrcode;

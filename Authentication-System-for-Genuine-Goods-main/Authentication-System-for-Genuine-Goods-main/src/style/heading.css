@@ -1,0 +1,36 @@
+    .line{
+    display: flex;
+    justify-content: left;
+    padding: 25px;
+}
+/* h1{
+    font-family:Georgia;
+    text-align: center;
+    margin-top: 10%;
+} */
+
+
+.line h1{
+    /* text-align: center; */
+    /* color: white; */
+    /* font-family: monospace; */
+    /* font-size: 50px; */
+    line-height: 10px;
+    overflow: hidden;
+    border-right: 3px solid  white;
+    white-space: nowrap;
+    animation:
+   
+    typing 4s steps(23) infinite ,
+    blinking 1s infinite step-end ;
+   
+}
+@keyframes typing {
+    0% { width: 0; }
+    50% { width: 35ch ;} 
+    /* 100% { width: 0 }     */
+}
+@keyframes blinking {
+    from, to { border-color: transparent; } 
+    50% { border-color: rgb(255, 255, 255); }
+}

@@ -1,0 +1,67 @@
+
+/* home.css */
+.start {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  
+    height: 100vh;  
+    justify-content: center;
+    /* align-items: center; */
+    /* background-color: #176B86; */
+    background-image: url("../../public/img/bcg.jpg");
+    /* background-color: black; */
+    background-repeat: no-repeat;
+    background-size: cover;
+    transition:white 0.5s ease;
+  }
+  .start h1{
+    color: white;
+    position: relative;;
+    left: 1%;
+    padding: 20px;
+  }
+  .button {
+    max-width: 300px;
+    scroll-behavior: smooth;
+    border: none;
+    font-weight: bolder;
+    font-size: 1rem;
+    position: relative;
+    left: 4%;
+    height: 3.5rem;
+    padding: 0 2rem;
+    border-radius: 2rem;
+    /* background: #2ba49c; */
+    color: black;
+    transition: all 0.3s;
+
+
+  }
+  
+  .button:hover {
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    letter-spacing: 2px;
+    color: white;
+  }
+  
+  .button::before,
+  .button::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    transform: scaleX(0.5);
+    width: 100%;
+    height: 0.5px;
+    background: white;
+    transition: all 0.3s;
+  }
+  
+  .button:hover::before,
+  .button:hover::after {
+    transform: scaleX(0.7);
+  }
+  

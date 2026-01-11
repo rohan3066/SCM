@@ -1,0 +1,51 @@
+/* footer.css */
+footer {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: flex-start;
+    background-color: #64CCC5;
+    color: black;
+    padding: 20px 0;
+  }
+  
+  .footer-section {
+    max-width: 300px;
+    text-align: left;
+  }
+  
+  .footer-section h2 {
+    color: black;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+  }
+  
+  .footer-section p,
+  .footer-section ul {
+    margin: 0;
+  }
+  
+  .footer-section ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .footer-section ul li {
+    margin-bottom: 5px;
+  }
+  
+  .footer-section a {
+    color: black;
+    text-decoration: none;
+  }
+  
+  .footer-section a:hover {
+    text-decoration: underline;
+  }
+  
+  .footer-divider {
+    width: 1px;
+    background-color: #fff;
+    margin: 10px 0;
+    height: 80px;
+  }
+  

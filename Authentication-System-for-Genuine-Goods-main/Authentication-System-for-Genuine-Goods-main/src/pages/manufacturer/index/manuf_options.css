@@ -1,0 +1,235 @@
+.manuf-icon {
+    vertical-align: middle;
+    line-height: 1px;
+    font-size: 20px;
+}
+
+.manuf-icon-header {
+    vertical-align: middle;
+    line-height: 1px;
+    font-size: 26px;
+}
+
+.manuf-icon, .manuf-icon-header {
+    margin-right: 5px;
+}
+
+.manuf-close-icon {
+    color: red;
+    margin-left: 30px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.manuf-grid-container {
+    display: grid;
+    grid-template-columns: 260px 1fr 1fr 1fr;
+    grid-template-rows: 0.2fr 3fr;
+    grid-template-areas:
+      'sidebar header header header'
+      'sidebar main main main';
+    height: 100vh;
+}
+
+/* Header */
+.manuf-header {
+    grid-area: header;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px 0 30px;
+    box-shadow: 0 6px 7px -3px rgba(0, 0, 0, 0.35);
+}
+
+.manuf-menu-icon {
+    display: none;
+}
+/* End Header */
+
+/* Sidebar */
+#manuf-sidebar {
+    grid-area: sidebar;
+    height: 100%;
+    background-color: #263043;
+    overflow-y: auto;
+    transition: all 0.5s;
+    -webkit-transition: all 0.5s;
+}
+
+.manuf-sidebar-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px 0px 30px;
+    margin-bottom: 30px;
+}
+
+.manuf-sidebar-title > span {
+    display: none;
+}
+
+.manuf-sidebar-brand {
+    margin-top: 15px;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+}
+
+.manuf-sidebar-list {
+    padding: 0;
+    list-style-type: none;
+}
+
+.manuf-sidebar-list-item {
+    padding: 20px 20px 20px 20px;
+    font-size: 18px;
+}
+
+.manuf-sidebar-list-item > a {
+    text-decoration: none;
+    color: #9e9ea4;
+}
+
+.manuf-sidebar-responsive {
+    display: inline !important;
+    position: absolute;
+    z-index: 12 !important;
+}
+/* End Sidebar */
+
+.manuf-button-30 {
+    align-items: center;
+    appearance: none;
+    background-color: #FCFCFD;
+    border-radius: 4px;
+    border-width: 0;
+    box-shadow: rgba(45, 35, 66, 0.4) 0 2px 4px,rgba(45, 35, 66, 0.3) 0 7px 13px -3px,#D6D6E7 0 -3px 0 inset;
+    box-sizing: border-box;
+    color: #36395A;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: "JetBrains Mono",monospace;
+    height: 48px;
+    width: 150px;
+    justify-content: center;
+    line-height: 1;
+    list-style: none;
+    overflow: hidden;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    text-align: left;
+    text-decoration: none;
+    transition: box-shadow .15s,transform .15s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    white-space: nowrap;
+    will-change: box-shadow,transform;
+    font-size: 18px;
+}
+
+.manuf-button-30:focus {
+    box-shadow: #D6D6E7 0 0 0 1.5px inset, rgba(45, 35, 66, 0.4) 0 2px 4px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+}
+
+.manuf-button-30:hover {
+    box-shadow: rgba(45, 35, 66, 0.4) 0 4px 8px, rgba(45, 35, 66, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+    transform: translateY(-2px);
+}
+
+.manuf-button-30:active {
+    box-shadow: #D6D6E7 0 3px 7px inset;
+    transform: translateY(2px);
+}
+
+/* Main */
+.manuf-main-container {
+    grid-area: main;
+    overflow-y: auto;
+    padding: 20px 20px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.manuf-main-title {
+    display: flex;
+    justify-content: space-between;
+    color: black;
+}
+
+.manuf-main-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin: 45px 0;
+    height: 200px;
+}
+
+.manuf-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+.manuf-card:first-child {
+    background-color: #2962ff;
+}
+
+.manuf-card:nth-child(2) {
+    background-color: #ff6d00;
+}
+
+.manuf-card:nth-child(3) {
+    background-color: #2e7d32;
+}
+
+.manuf-card-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.manuf-card-inner > .manuf-card_icon {
+    font-size: 25px;
+}
+
+.manuf-course-container {
+    display: flex;
+}
+
+.manuf-course {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    max-width: 100%;
+    overflow: hidden;
+    margin-top: 50px;
+    width: 815px;
+}
+
+.manuf-info {
+    color: black;
+    margin: 20px;
+}
+
+.manuf-course-preview {
+    background-color: #2A265F;
+    color: #fff;
+    padding: 30px;
+    display: flex;
+    justify-content:center;
+    align-items: center;
+    max-width: 250px;
+
+}
+
+.manuf-main-title h2{
+    font-size: 40px;
+    font-family:Arial, Helvetica, sans-serif;
+    margin-left: 0.5%;
+}
