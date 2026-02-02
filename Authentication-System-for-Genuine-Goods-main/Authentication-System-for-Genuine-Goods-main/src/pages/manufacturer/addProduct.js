@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 // import { Input, Button, Image } from "semantic-ui-react"; // Removing unused
 import qrcode from "qrcode";
@@ -7,17 +8,33 @@ import Manufacturer from "../../ethereum/manufacturerIns";
 // import "@fortawesome/fontawesome-free/css/all.css"; // Removing old css
 // import { PiArrowCircleLeftFill } from "react-icons/pi";
 import { toast } from "react-toastify";
-import { FaBox, FaTag, FaBarcode, FaDollarSign, FaQrcode, FaDownload } from "react-icons/fa";
+import { FaBox, FaTag, FaBarcode, FaDollarSign, FaQrcode, FaDownload, FaImage } from "react-icons/fa";
 
 function AddProduct({ address }) {
   const [id, setId] = useState("");
   const [imageQR, setImageQR] = useState("");
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
-  const [price, setPrice] = useState(""); // Added state for price
+  const [price, setPrice] = useState("");
+
+  // Image States
   const [productImage, setProductImage] = useState(null);
+  const [productImage2, setProductImage2] = useState(null); // New State for 2nd Image
+
   const [isLoading, setIsLoading] = useState(false);
   const qrDescriptionRef = useRef(null);
+
+  const handleImageUpload = async (file) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await fetch("http://localhost:3001/upload-image", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Image upload failed");
+    return data.url;
+  };
 
   const generateQRCode = async (e) => {
     e.preventDefault();
@@ -25,23 +42,31 @@ function AddProduct({ address }) {
 
     try {
       if (!productImage) {
-        toast.error("Please select a product image", { position: "top-center" });
+        toast.error("Please select at least the primary product image", { position: "top-center" });
         setIsLoading(false);
         return;
       }
 
-      // 1. Upload Image
-      const formData = new FormData();
-      formData.append("image", productImage);
+      // 1. Upload Images
+      let imageUrl1 = "";
+      let imageUrl2 = "";
 
-      const uploadRes = await fetch("http://localhost:3001/upload-image", {
-        method: "POST",
-        body: formData
-      });
+      try {
+        imageUrl1 = await handleImageUpload(productImage);
+      } catch (err) {
+        throw new Error("Failed to upload primary image: " + err.message);
+      }
 
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Image upload failed");
-      const imageUrl = uploadData.url;
+      if (productImage2) {
+        try {
+          imageUrl2 = await handleImageUpload(productImage2);
+        } catch (err) {
+          console.warn("Failed to upload second image", err);
+          // We can choose to fail or continue. Let's warning toast but continue? 
+          // Better to fail so data is consistent.
+          throw new Error("Failed to upload second image: " + err.message);
+        }
+      }
 
       // 2. Smart Contract Call
       const accounts = await web3.eth.getAccounts();
@@ -51,14 +76,19 @@ function AddProduct({ address }) {
         .addProduct(id, name, brand)
         .send({ from: accounts[0] });
 
-      // 3. Save Image Link to Database
+      // 3. Save Image Links to Database
       await fetch("http://localhost:3001/save-product-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: id, brandId: brand, imageUrl })
+        body: JSON.stringify({
+          productId: id,
+          brandId: brand,
+          imageUrl: imageUrl1,
+          imageUrl2: imageUrl2
+        })
       });
 
-      toast.success("Product Details & Image Added Successfully!", {
+      toast.success("Product Details & Images Added Successfully!", {
         position: "top-center",
         autoClose: 2500,
       });
@@ -83,7 +113,7 @@ function AddProduct({ address }) {
 
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl w-full bg-brand-darker p-8 md:p-12 rounded-2xl shadow-2xl border border-brand-gray/30 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row gap-8">
+      <div className="max-w-3xl w-full bg-brand-darker p-8 md:p-12 rounded-2xl shadow-2xl border border-brand-gray/30 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row gap-8">
 
         {/* Decorative Background */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-orange to-red-600"></div>
@@ -102,92 +132,116 @@ function AddProduct({ address }) {
 
           <form className="space-y-4" onSubmit={generateQRCode}>
 
-            <div className="relative group">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Brand Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaTag className="text-gray-500" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Brand Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaTag className="text-gray-500" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
+                    placeholder="e.g. Nike"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                  />
                 </div>
-                <input
-                  type="text"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
-                  placeholder="e.g. Nike"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                />
+              </div>
+
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Product Name</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaBox className="text-gray-500" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
+                    placeholder="e.g. Air Jordan 1"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="relative group">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Product Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaBox className="text-gray-500" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Product ID</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaBarcode className="text-gray-500" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
+                    placeholder="e.g. AJ1-2024-001"
+                    value={id}
+                    onChange={(e) => setId(e.target.value)}
+                  />
                 </div>
-                <input
-                  type="text"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
-                  placeholder="e.g. Air Jordan 1"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+              </div>
+
+              <div className="relative group">
+                <label className="block text-sm font-medium text-gray-400 mb-1">Price ($)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaDollarSign className="text-gray-500" />
+                  </div>
+                  <input
+                    type="number"
+                    required
+                    className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
+                    placeholder="200"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="relative group">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Product ID</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaBarcode className="text-gray-500" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
-                  placeholder="e.g. AJ1-2024-001"
-                  value={id}
-                  onChange={(e) => setId(e.target.value)}
-                />
-              </div>
-            </div>
+            <div className="space-y-3 pt-2">
+              <label className="block text-sm font-medium text-gray-400">Product Images</label>
 
-            <div className="relative group">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Product Price</label>
-              <div className="relative">
+              {/* Primary Image */}
+              <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaDollarSign className="text-gray-500" />
+                  <FaImage className="text-brand-orange" />
                 </div>
-                <input
-                  type="number"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-brand-gray rounded-xl bg-brand-dark text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange sm:text-sm transition-all"
-                  placeholder="e.g. 200"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="relative group">
-              <label className="block text-sm font-medium text-gray-400 mb-1">Product Image</label>
-              <div className="relative">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setProductImage(e.target.files[0])}
-                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-brand-orange file:text-white hover:file:bg-orange-600"
+                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-orange/20 file:text-brand-orange hover:file:bg-brand-orange/30 pl-10 border border-brand-gray/50 rounded-xl"
                 />
+                <span className="text-xs text-gray-500 mt-1 block pl-1">Primary View (Required)</span>
+              </div>
+
+              {/* Secondary Image */}
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaImage className="text-gray-500" />
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setProductImage2(e.target.files[0])}
+                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600 pl-10 border border-brand-gray/50 rounded-xl"
+                />
+                <span className="text-xs text-gray-500 mt-1 block pl-1">Secondary View (Optional)</span>
               </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-brand-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-all duration-300 disabled:opacity-50"
+              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-brand-orange hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-all duration-300 disabled:opacity-50 mt-4"
             >
-              {isLoading ? "Processing..." : "Generate Products"}
+              {isLoading ? "Processing..." : "Generate & Upload"}
             </button>
           </form>
         </div>

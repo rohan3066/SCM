@@ -202,16 +202,24 @@ cloudinary.config({
 // Configure Multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Create product_images table if not exists
+// Create product_images table if not exists with image_url_2
 db.query(`
     CREATE TABLE IF NOT EXISTS product_images (
         product_id VARCHAR(255) PRIMARY KEY,
         image_url TEXT,
+        image_url_2 TEXT,
         brand_id VARCHAR(255)
     )
 `, (err, res) => {
   if (err) console.error("Error creating product_images table:", err);
-  else console.log("product_images table ready");
+  else {
+    console.log("product_images table ready");
+    // Migration: Add image_url_2 if it doesn't exist
+    db.query(`ALTER TABLE product_images ADD COLUMN IF NOT EXISTS image_url_2 TEXT`, (alterErr, alterRes) => {
+      if (alterErr) console.error("Error adding image_url_2 column:", alterErr);
+      else console.log("product_images table migrated (image_url_2 added)");
+    });
+  }
 });
 
 // Endpoint to upload image to Cloudinary
@@ -244,11 +252,14 @@ app.post("/upload-image", upload.single('image'), (req, res) => {
 });
 
 // Endpoint to link product ID to Image URL
+// Endpoint to link product ID to Image URL(s)
 app.post("/save-product-image", (req, res) => {
-  const { productId, brandId, imageUrl } = req.body;
+  const { productId, brandId, imageUrl, imageUrl2 } = req.body;
+  const img2 = imageUrl2 || null; // Handle optional second image
+
   db.query(
-    "INSERT INTO product_images (product_id, image_url, brand_id) VALUES ($1, $2, $3) ON CONFLICT (product_id) DO UPDATE SET image_url = $2",
-    [productId, imageUrl, brandId],
+    "INSERT INTO product_images (product_id, image_url, image_url_2, brand_id) VALUES ($1, $2, $3, $4) ON CONFLICT (product_id) DO UPDATE SET image_url = $2, image_url_2 = $3",
+    [productId, imageUrl, img2, brandId],
     (err, result) => {
       if (err) {
         console.error("Error saving product image:", err);
@@ -263,7 +274,7 @@ app.post("/save-product-image", (req, res) => {
 app.get("/product-image/:id", (req, res) => {
   const productId = req.params.id;
   db.query(
-    "SELECT image_url FROM product_images WHERE product_id = $1",
+    "SELECT image_url, image_url_2 FROM product_images WHERE product_id = $1",
     [productId],
     (err, result) => {
       if (err) {
@@ -271,7 +282,10 @@ app.get("/product-image/:id", (req, res) => {
         return res.status(500).send("Error fetching image");
       }
       if (result.rows.length > 0) {
-        res.json({ imageUrl: result.rows[0].image_url });
+        res.json({
+          imageUrl: result.rows[0].image_url,
+          imageUrl2: result.rows[0].image_url_2
+        });
       } else {
         res.status(404).send("Image not found");
       }

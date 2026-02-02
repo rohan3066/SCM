@@ -19,6 +19,7 @@ const Qrcode = () => {
   const [active, setActive] = useState("0");
   const [isLoading, setIsLoading] = useState(false);
   const [productImageUrl, setProductImageUrl] = useState("");
+  const [productImageUrl2, setProductImageUrl2] = useState("");
   const processedRef = useRef(false);
 
   // const openDialog = () => { ... } // Unused in this refactor if we rely on webcam
@@ -82,6 +83,7 @@ const Qrcode = () => {
           if (imgRes.ok) {
             const imgData = await imgRes.json();
             setProductImageUrl(imgData.imageUrl);
+            setProductImageUrl2(imgData.imageUrl2);
           }
         } catch (e) {
           console.error("Failed to fetch product image", e);
@@ -192,14 +194,25 @@ const Qrcode = () => {
               </div>
             </div>
 
-            {productImageUrl && (
+            {(productImageUrl || productImageUrl2) && (
               <div className="bg-brand-darker border border-brand-gray rounded-xl p-6 flex flex-col items-center animate-fadeIn">
-                <p className="text-gray-400 mb-4 text-sm uppercase tracking-wider">Product Visual</p>
-                <img
-                  src={productImageUrl}
-                  alt="Verified Product"
-                  className="w-full max-w-sm rounded-lg shadow-lg object-cover"
-                />
+                <p className="text-gray-400 mb-4 text-sm uppercase tracking-wider">Product Visuals</p>
+                <div className="flex gap-4 overflow-x-auto w-full justify-center">
+                  {productImageUrl && (
+                    <img
+                      src={productImageUrl}
+                      alt="Verified Product Front"
+                      className="w-full max-w-xs rounded-lg shadow-lg object-cover"
+                    />
+                  )}
+                  {productImageUrl2 && (
+                    <img
+                      src={productImageUrl2}
+                      alt="Verified Product Side/Back"
+                      className="w-full max-w-xs rounded-lg shadow-lg object-cover"
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
