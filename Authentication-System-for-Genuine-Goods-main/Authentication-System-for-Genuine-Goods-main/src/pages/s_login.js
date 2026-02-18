@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../config";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FaUserPlus, FaSignInAlt, FaStore } from "react-icons/fa";
@@ -18,7 +19,7 @@ const SellerLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/s_signup", {
+      const response = await axios.post(`${API_BASE_URL}/s_signup`, {
         id,
         city,
         pass,
@@ -39,7 +40,7 @@ const SellerLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/s_signin", { id, pass });
+      const response = await axios.post(`${API_BASE_URL}/s_signin`, { id, pass });
 
       if (response.data.accessToken) {
         localStorage.setItem("token", response.data.accessToken);

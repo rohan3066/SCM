@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../config";
 import { useNavigate } from "react-router-dom";
 import factory from "../ethereum/factory";
 import web3 from "../ethereum/web3";
@@ -20,7 +21,7 @@ const ManufacturerLogin = (props) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/m_signup", {
+      const response = await axios.post(`${API_BASE_URL}/m_signup`, {
         id,
         brand,
         city,
@@ -69,11 +70,11 @@ const ManufacturerLogin = (props) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3001/m_signin", { id, pass });
+      const response = await axios.post(`${API_BASE_URL}/m_signin`, { id, pass });
 
       if (response.data.accessToken) {
         localStorage.setItem("token", response.data.accessToken);
-        const res = await axios.post("http://localhost:3001/brand", { id }, {
+        const res = await axios.post(`${API_BASE_URL}/brand`, { id }, {
           headers: { Authorization: `Bearer ${response.data.accessToken}` }
         });
 

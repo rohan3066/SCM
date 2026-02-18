@@ -9,6 +9,7 @@ import {
   BsFillArchiveFill,
 } from "react-icons/bs";
 import { FaSignOutAlt, FaPlus, FaUserPlus, FaExchangeAlt, FaBars, FaTimes } from "react-icons/fa";
+import API_BASE_URL from "../../config";
 
 function Manuf() {
   const [openSidebarToggle, setOpenSidebarToggle] = useState(false);
@@ -29,13 +30,13 @@ function Manuf() {
 
   React.useEffect(() => {
     if (brand) {
-      fetch(`http://localhost:3001/manufacturer/products/${brand}`)
+      fetch(`${API_BASE_URL}/manufacturer/products/${brand}`)
         .then(res => res.json())
         .then(data => setProducts(data))
         .catch(err => console.error("Failed to fetch products", err));
     }
 
-    fetch(`http://localhost:3001/all-sellers`)
+    fetch(`${API_BASE_URL}/all-sellers`)
       .then(res => res.json())
       .then(data => setSellers(data))
       .catch(err => console.error("Failed to fetch sellers", err));

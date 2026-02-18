@@ -10,6 +10,8 @@ import Manufacturer from "../../ethereum/manufacturerIns";
 import { toast } from "react-toastify";
 import { FaBox, FaTag, FaBarcode, FaDollarSign, FaQrcode, FaDownload, FaImage } from "react-icons/fa";
 
+import API_BASE_URL from "../../config";
+
 function AddProduct({ address }) {
   const [id, setId] = useState("");
   const [imageQR, setImageQR] = useState("");
@@ -27,7 +29,7 @@ function AddProduct({ address }) {
   const handleImageUpload = async (file) => {
     const formData = new FormData();
     formData.append("image", file);
-    const res = await fetch("http://localhost:3001/upload-image", {
+    const res = await fetch(`${API_BASE_URL}/upload-image`, {
       method: "POST",
       body: formData
     });
@@ -77,7 +79,7 @@ function AddProduct({ address }) {
         .send({ from: accounts[0] });
 
       // 3. Save Image Links to Database
-      await fetch("http://localhost:3001/save-product-image", {
+      await fetch(`${API_BASE_URL}/save-product-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

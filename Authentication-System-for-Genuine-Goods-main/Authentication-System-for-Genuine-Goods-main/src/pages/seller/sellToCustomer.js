@@ -7,6 +7,7 @@ import axios from "axios";
 // import "@fortawesome/fontawesome-free/css/all.css"; // Removing old css
 import { toast } from "react-toastify";
 import { FaTag, FaBoxOpen, FaEnvelope, FaShoppingCart } from "react-icons/fa";
+import API_BASE_URL from "../../config";
 
 const SellToCustomer = () => {
   const [brand, setBrand] = useState("");
@@ -56,7 +57,7 @@ const SellToCustomer = () => {
 
       // Attempt backend call but fallback gracefully if it fails? 
       // User didn't ask to fix this but good practice. sticking to existing flow.
-      await axios.post("http://localhost:3001/sendEmail", {
+      await axios.post(`${API_BASE_URL}/sendEmail`, {
         brand,
         prodId,
         email,

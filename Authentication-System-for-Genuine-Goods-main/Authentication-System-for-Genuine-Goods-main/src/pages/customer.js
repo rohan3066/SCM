@@ -6,6 +6,7 @@ import factory from "../ethereum/factory";
 import web3 from "../ethereum/web3";
 import { toast } from "react-toastify";
 import { FaQrcode, FaCheckCircle, FaTimesCircle, FaSearch, FaExclamationTriangle } from "react-icons/fa";
+import API_BASE_URL from "../config";
 
 const Qrcode = () => {
   const [fileResult, setFileResult] = useState("");
@@ -65,7 +66,7 @@ const Qrcode = () => {
       // Fetch Product Status first to have it available for logic
       let currentStatus = null;
       try {
-        const statusUrl = `http://localhost:3001/product-status?brand=${encodeURIComponent(trimmedBrand)}&product_id=${encodeURIComponent(trimmedProduct)}`;
+        const statusUrl = `${API_BASE_URL}/product-status?brand=${encodeURIComponent(trimmedBrand)}&product_id=${encodeURIComponent(trimmedProduct)}`;
         console.log("Fetching status from:", statusUrl);
         const statusResponse = await fetch(statusUrl);
 
@@ -82,7 +83,7 @@ const Qrcode = () => {
 
       // Fetch Image regardless of outcome (if it exists)
       try {
-        const imgRes = await fetch(`http://localhost:3001/product-image/${encodeURIComponent(trimmedProduct)}`);
+        const imgRes = await fetch(`${API_BASE_URL}/product-image/${encodeURIComponent(trimmedProduct)}`);
         if (imgRes.ok) {
           const imgData = await imgRes.json();
           setProductImageUrl(imgData.imageUrl);
