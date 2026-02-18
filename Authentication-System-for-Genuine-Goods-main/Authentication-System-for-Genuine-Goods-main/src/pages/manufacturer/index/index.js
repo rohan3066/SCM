@@ -9,7 +9,7 @@ import {
   BsFillArchiveFill,
 } from "react-icons/bs";
 import { FaSignOutAlt, FaPlus, FaUserPlus, FaExchangeAlt, FaBars, FaTimes } from "react-icons/fa";
-import API_BASE_URL from "../../config";
+import API_BASE_URL from "../../../config.js";
 
 function Manuf() {
   const [openSidebarToggle, setOpenSidebarToggle] = useState(false);
