@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS manufacturer (
   manuf_city TEXT,
   pass TEXT NOT NULL,
   contract_address TEXT,
-  created_at TIMESTAMPTZ DEFAULT now();
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- sellers table (maps to /s_signup, /s_signin)
