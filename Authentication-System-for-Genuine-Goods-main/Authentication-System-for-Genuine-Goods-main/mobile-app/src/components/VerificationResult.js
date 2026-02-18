@@ -57,6 +57,36 @@ export default function VerificationResult({ result, productImage, productImage2
                         isAuthentic && <Text style={styles.noImageText}>No product images available.</Text>
                     )}
 
+                    {/* Product Status Section */}
+                    {result.productStatus && (
+                        <View style={styles.detailsCard}>
+                            <Text style={styles.cardHeader}>Product Status</Text>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Current Status:</Text>
+                                <View style={[styles.badge, styles.badgeInfo]}>
+                                    <Text style={[styles.badgeText, styles.textInfo]}>
+                                        {result.productStatus.status ? result.productStatus.status.replace(/_/g, " ").toUpperCase() : "UNKNOWN"}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {result.productStatus.status === 'sold_to_consumer' ? (
+                                <View style={styles.rowColumn}>
+                                    <Text style={styles.label}>Sold To:</Text>
+                                    <Text style={styles.valueHighlight}>
+                                        {result.productStatus.soldTo || "Consumer"}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.rowColumn}>
+                                    <Text style={styles.infoText}>
+                                        This product has not been sold to a consumer yet.
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     <View style={styles.detailsCard}>
                         <Text style={styles.cardHeader}>Blockchain Verification</Text>
 
@@ -81,10 +111,42 @@ export default function VerificationResult({ result, productImage, productImage2
                 </>
             ) : (
                 <View style={styles.errorContainer}>
-                    <View style={[styles.circle, styles.bgError]}>
-                        <Text style={styles.iconText}>X</Text>
+                    {/* If skipped, show a neutral icon, otherwise error */}
+                    <View style={[styles.circle, result.skipped ? styles.bgWarning : styles.bgError]}>
+                        <Text style={styles.iconText}>{result.skipped ? "?" : "X"}</Text>
                     </View>
-                    <Text style={styles.statusTitle}>Error</Text>
+                    <Text style={styles.statusTitle}>{result.isValid ? "Verified" : (result.skipped ? "Status Check" : "Verification Failed")}</Text>
+
+                    {/* Product Status Section */}
+                    {result.productStatus && (
+                        <View style={styles.detailsCard}>
+                            <Text style={styles.cardHeader}>Product Status</Text>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Current Status:</Text>
+                                <View style={[styles.badge, styles.badgeInfo]}>
+                                    <Text style={[styles.badgeText, styles.textInfo]}>
+                                        {result.productStatus.status ? result.productStatus.status.replace(/_/g, " ").toUpperCase() : "UNKNOWN"}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {result.productStatus.status === 'sold_to_consumer' ? (
+                                <View style={styles.rowColumn}>
+                                    <Text style={styles.label}>Sold To:</Text>
+                                    <Text style={styles.valueHighlight}>
+                                        {result.productStatus.soldTo || "Consumer"}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.rowColumn}>
+                                    <Text style={styles.infoText}>
+                                        This product has not been sold to a consumer yet.
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     <Text style={styles.statusMessage}>{result.message || "An unknown error occurred."}</Text>
                     {result.error && <Text style={styles.debugText}>{result.error}</Text>}
                 </View>
@@ -275,5 +337,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#111827',
         padding: 8,
         borderRadius: 4,
+    },
+    bgWarning: {
+        backgroundColor: '#FBBF24', // Amber-400
+    },
+    badgeInfo: {
+        backgroundColor: 'rgba(59, 130, 246, 0.1)', // Blue-500
+    },
+    textInfo: {
+        color: '#60A5FA', // Blue-400
+    },
+    valueHighlight: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: THEME.primary,
+        marginTop: 4,
+    },
+    infoText: {
+        color: THEME.textMuted,
+        fontStyle: 'italic',
+        marginTop: 4,
     }
 });

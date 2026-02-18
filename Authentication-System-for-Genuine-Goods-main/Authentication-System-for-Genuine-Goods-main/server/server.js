@@ -154,31 +154,48 @@ app.post("/brand", authenticateToken, (req, res) => {
 app.post("/sendEmail", (req, res) => {
   const { brand, prodId, email, consumerCode } = req.body;
 
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: {
-      user: "amolpatilgamer55@gmail.com",
-      pass: "oklh mvho syac pkju",
-    },
-  });
+  // Update Product Status in DB
+  const updateQuery = `
+    INSERT INTO product (manufacturer_brand, product_id, status, consumer_email, consumer_code_hash)
+    VALUES ($1, $2, 'sold_to_consumer', $3, $4)
+    ON CONFLICT (manufacturer_brand, product_id)
+    DO UPDATE SET status = 'sold_to_consumer', consumer_email = $3, consumer_code_hash = $4;
+  `;
 
-  const mailOptions = {
-    from: "amolpatilgamer55@gmail.com",
-    to: email,
-    subject: `Your consumer code for purchase is ${consumerCode}`,
-    text: ` Your consumer code on purchase from ${brand} product-id : ${prodId} is ${consumerCode}`,
-  };
-
-  transporter.sendMail(mailOptions, function (error, info) {
-    if (error) {
-      console.log(error);
-      return res.sendStatus(500);
+  db.query(updateQuery, [brand, prodId, email, consumerCode], (dbErr, dbRes) => {
+    if (dbErr) {
+      console.error("Database update error during sale:", dbErr);
+      // Decide if we want to stop here. For now, let's log and proceed or fail? 
+      // If DB fails, verification won't work. Best to fail.
+      return res.status(500).send("Database error recording sale");
     }
-    console.log("Email sent: " + info.response);
-    console.log(consumerCode);
-    return res.sendStatus(200);
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: "amolpatilgamer55@gmail.com",
+        pass: "oklh mvho syac pkju",
+      },
+    });
+
+    const mailOptions = {
+      from: "amolpatilgamer55@gmail.com",
+      to: email,
+      subject: `Your consumer code for purchase is ${consumerCode}`,
+      text: ` Your consumer code on purchase from ${brand} product-id : ${prodId} is ${consumerCode}`,
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.log(error);
+        return res.sendStatus(500);
+      }
+      console.log("Email sent & DB Updated: " + info.response);
+      console.log(consumerCode);
+      return res.sendStatus(200);
+    });
   });
 });
 
@@ -257,17 +274,32 @@ app.post("/save-product-image", (req, res) => {
   const { productId, brandId, imageUrl, imageUrl2 } = req.body;
   const img2 = imageUrl2 || null; // Handle optional second image
 
-  db.query(
-    "INSERT INTO product_images (product_id, image_url, image_url_2, brand_id) VALUES ($1, $2, $3, $4) ON CONFLICT (product_id) DO UPDATE SET image_url = $2, image_url_2 = $3",
-    [productId, imageUrl, img2, brandId],
-    (err, result) => {
-      if (err) {
-        console.error("Error saving product image:", err);
-        return res.status(500).send("Error saving image data");
-      }
-      res.status(200).send("Image linked successfully");
+  // 1. Save Images
+  const imageQuery = "INSERT INTO product_images (product_id, image_url, image_url_2, brand_id) VALUES ($1, $2, $3, $4) ON CONFLICT (product_id) DO UPDATE SET image_url = $2, image_url_2 = $3";
+
+  db.query(imageQuery, [productId, imageUrl, img2, brandId], (err, result) => {
+    if (err) {
+      console.error("Error saving product image:", err);
+      return res.status(500).send("Error saving image data");
     }
-  );
+
+    // 2. Create Product Entry in Product Table if not exists
+    const productQuery = `
+      INSERT INTO product (manufacturer_brand, product_id, status)
+      VALUES ($1, $2, 'manufactured')
+      ON CONFLICT (manufacturer_brand, product_id) DO NOTHING;
+    `;
+
+    db.query(productQuery, [brandId, productId], (prodErr, prodRes) => {
+      if (prodErr) {
+        console.error("Error creating product record:", prodErr);
+        // We could define this as critical, but since image saved, maybe 200 with warning log? 
+        // For consistency, let's return 500 so client knows something went wrong.
+        return res.status(500).send("Error creating product record");
+      }
+      res.status(200).send("Product & Images saved successfully");
+    });
+  });
 });
 
 // Endpoint to get product image
@@ -321,5 +353,38 @@ app.get("/all-sellers", (req, res) => {
       res.json(result.rows);
     }
   );
+});
+
+// Endpoint to check product status
+app.get("/product-status", (req, res) => {
+  const { brand, product_id } = req.query;
+
+  if (!brand || !product_id) {
+    return res.status(400).json({ error: "Missing brand or product_id" });
+  }
+
+  const query = `
+    SELECT p.status, p.consumer_email, c.name as customer_name
+    FROM product p
+    LEFT JOIN customer c ON p.consumer_email = c.email
+    WHERE p.manufacturer_brand = $1 AND p.product_id = $2
+  `;
+
+  db.query(query, [brand, product_id], (err, result) => {
+    if (err) {
+      console.error("Error fetching product status:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const product = result.rows[0];
+    res.json({
+      status: product.status,
+      soldTo: product.status === 'sold_to_consumer' ? product.customer_name : null
+    });
+  });
 });
 

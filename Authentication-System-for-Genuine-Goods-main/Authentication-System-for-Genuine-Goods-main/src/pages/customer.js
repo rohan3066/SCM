@@ -5,7 +5,7 @@ import Manufacturer from "../ethereum/manufacturerIns";
 import factory from "../ethereum/factory";
 import web3 from "../ethereum/web3";
 import { toast } from "react-toastify";
-import { FaQrcode, FaCheckCircle, FaTimesCircle, FaSearch } from "react-icons/fa";
+import { FaQrcode, FaCheckCircle, FaTimesCircle, FaSearch, FaExclamationTriangle } from "react-icons/fa";
 
 const Qrcode = () => {
   const [fileResult, setFileResult] = useState("");
@@ -20,6 +20,7 @@ const Qrcode = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [productImageUrl, setProductImageUrl] = useState("");
   const [productImageUrl2, setProductImageUrl2] = useState("");
+  const [productStatus, setProductStatus] = useState(null);
   const processedRef = useRef(false);
 
   // const openDialog = () => { ... } // Unused in this refactor if we rely on webcam
@@ -57,9 +58,42 @@ const Qrcode = () => {
       }
     }
 
+    const trimmedBrand = manufacturerCode.trim();
+    const trimmedProduct = productCode.trim();
+
     try {
+      // Fetch Product Status first to have it available for logic
+      let currentStatus = null;
+      try {
+        const statusUrl = `http://localhost:3001/product-status?brand=${encodeURIComponent(trimmedBrand)}&product_id=${encodeURIComponent(trimmedProduct)}`;
+        console.log("Fetching status from:", statusUrl);
+        const statusResponse = await fetch(statusUrl);
+
+        if (statusResponse.ok) {
+          currentStatus = await statusResponse.json();
+          console.log("Fetched Product Status:", currentStatus);
+          setProductStatus(currentStatus);
+        } else {
+          console.warn("Status fetch failed:", statusResponse.status);
+        }
+      } catch (e) {
+        console.error("Failed to fetch status", e);
+      }
+
+      // Fetch Image regardless of outcome (if it exists)
+      try {
+        const imgRes = await fetch(`http://localhost:3001/product-image/${encodeURIComponent(trimmedProduct)}`);
+        if (imgRes.ok) {
+          const imgData = await imgRes.json();
+          setProductImageUrl(imgData.imageUrl);
+          setProductImageUrl2(imgData.imageUrl2);
+        }
+      } catch (e) {
+        console.error("Failed to fetch product image", e);
+      }
+
       const address = await factory.methods
-        .getManufacturerInstance(manufacturerCode.trim())
+        .getManufacturerInstance(trimmedBrand)
         .call();
 
       if (address === "0x0000000000000000000000000000000000000000") {
@@ -69,31 +103,31 @@ const Qrcode = () => {
       }
 
       const manuIns = Manufacturer(address);
-      const authres = await manuIns.methods
-        .productVerification(productCode, parseInt(consumerKey))
-        .call();
+
+      // If key is provided, try to verify
+      let authres = false;
+      if (consumerKey) {
+        authres = await manuIns.methods
+          .productVerification(trimmedProduct, parseInt(consumerKey))
+          .call();
+      }
 
       if (authres) {
         setAuthenticationRes("This Product is Generic & Authentic.");
         setActive("1");
-
-        // Fetch Product Image
-        try {
-          const imgRes = await fetch(`http://localhost:3001/product-image/${productCode}`);
-          if (imgRes.ok) {
-            const imgData = await imgRes.json();
-            setProductImageUrl(imgData.imageUrl);
-            setProductImageUrl2(imgData.imageUrl2);
-          }
-        } catch (e) {
-          console.error("Failed to fetch product image", e);
-        }
-
       } else {
-        setAuthenticationRes("Alert! This Product might be a Counterfeit.");
-        setActive("2");
+        // Verification failed OR no key provided
+        // Check if sold
+        if (currentStatus && currentStatus.status === 'sold_to_consumer') {
+          setAuthenticationRes("Product is sold but not authentic because code is wrong");
+          setActive("3");
+        } else {
+          setAuthenticationRes("Alert! This Product might be a Counterfeit.");
+          setActive("2");
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Verification Failed. Please check inputs.", { position: "top-center", autoClose: 2500 });
     }
     setIsLoading(false);
@@ -174,7 +208,7 @@ const Qrcode = () => {
 
           <button
             onClick={authenticate}
-            disabled={isLoading || !manufacturerCode || !productCode || !consumerKey}
+            disabled={isLoading || !manufacturerCode || !productCode}
             className="w-full bg-brand-orange hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg transform transition hover:scale-[1.02] duration-300 flex items-center justify-center gap-2"
           >
             {isLoading ? "Verifying..." : <><FaSearch /> Verify Authenticity</>}
@@ -193,6 +227,29 @@ const Qrcode = () => {
                 <p className="text-gray-300">{authenticationres}</p>
               </div>
             </div>
+
+            {/* Product Status Display */}
+            {productStatus && (
+              <div className="bg-blue-500/10 border border-blue-500 rounded-xl p-6 animate-fadeIn">
+                <h3 className="text-lg font-bold text-blue-400 mb-3 uppercase tracking-wider">Current Status</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-400 text-xs uppercase">Status</p>
+                    <p className="text-white font-mono text-lg">{productStatus.status ? productStatus.status.replace(/_/g, " ").toUpperCase() : "UNKNOWN"}</p>
+                  </div>
+                  {productStatus.status === 'sold_to_consumer' ? (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase">Sold To</p>
+                      <p className="text-brand-orange font-bold text-lg">{productStatus.soldTo || "Consumer"}</p>
+                    </div>
+                  ) : (
+                    <div className="col-span-2">
+                      <p className="text-gray-500 italic text-sm mt-1">Product not yet sold to consumer.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {(productImageUrl || productImageUrl2) && (
               <div className="bg-brand-darker border border-brand-gray rounded-xl p-6 flex flex-col items-center animate-fadeIn">
@@ -226,6 +283,41 @@ const Qrcode = () => {
             </div>
           </div>
         )}
+        {active === "3" && (
+          <div className="space-y-6">
+            {/* Product Status Display for Warning State */}
+            {productStatus && (
+              <div className="bg-blue-500/10 border border-blue-500 rounded-xl p-6 animate-fadeIn">
+                <h3 className="text-lg font-bold text-blue-400 mb-3 uppercase tracking-wider">Current Status</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-gray-400 text-xs uppercase">Status</p>
+                    <p className="text-white font-mono text-lg">{productStatus.status ? productStatus.status.replace(/_/g, " ").toUpperCase() : "UNKNOWN"}</p>
+                  </div>
+                  {productStatus.status === 'sold_to_consumer' ? (
+                    <div>
+                      <p className="text-gray-400 text-xs uppercase">Sold To</p>
+                      <p className="text-brand-orange font-bold text-lg">{productStatus.soldTo || "Consumer"}</p>
+                    </div>
+                  ) : (
+                    <div className="col-span-2">
+                      <p className="text-gray-500 italic text-sm mt-1">Product not yet sold to consumer.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-orange-500/10 border border-orange-500 rounded-xl p-6 flex items-center gap-4 animate-fadeIn">
+              <FaExclamationTriangle className="text-4xl text-orange-500" />
+              <div>
+                <h3 className="text-xl font-bold text-orange-500">Verification Warning</h3>
+                <p className="text-gray-300">{authenticationres}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
     </div>

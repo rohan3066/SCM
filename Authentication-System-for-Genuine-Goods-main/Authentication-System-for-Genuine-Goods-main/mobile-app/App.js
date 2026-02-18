@@ -84,56 +84,95 @@ export default function App() {
   };
 
   const handleVerify = async () => {
-    if (!manufacturerCode || !productCode || !consumerKey) {
+    if (!manufacturerCode || !productCode) {
       Toast.show({
         type: 'error',
         text1: 'Missing Fields',
-        text2: 'Please fill in all fields.'
+        text2: 'Please scan a valid product.'
       });
       return;
     }
 
     setIsLoading(true);
-    try {
-      const result = await verifyProductOnBlockchain(manufacturerCode, productCode, consumerKey);
+    let result = { success: false, isValid: false, message: "Verification failed.", manufacturerAddress: null };
+    let productStatusBackend = null;
 
-      if (result.success && result.isValid) {
-        try {
-          console.log(`Fetching image from ${API_URL}/product-image/${productCode}...`);
-          const response = await fetch(`${API_URL}/product-image/${productCode}`);
-          console.log("Image fetch status:", response.status);
-          
-          if (response.ok) {
-            const imgData = await response.json();
-            console.log("Image data received:", imgData);
-            if (imgData.imageUrl) {
-              setProductImage(imgData.imageUrl);
-            }
-            if (imgData.imageUrl2) {
-              setProductImage2(imgData.imageUrl2);
-            }
-            if (!imgData.imageUrl && !imgData.imageUrl2) {
-               Toast.show({ type: 'info', text1: 'Info', text2: 'No images found for this product.' });
-            }
-          } else {
-            console.log("Image fetch failed with status:", response.status);
-            Toast.show({ type: 'error', text1: 'Image Error', text2: `Status: ${response.status}` });
+    try {
+      // 1. Fetch Product Status from Backend
+      try {
+        const statusUrl = `${API_URL}/product-status?brand=${encodeURIComponent(manufacturerCode)}&product_id=${encodeURIComponent(productCode)}`;
+        console.log("Fetching status from:", statusUrl);
+        const statusResponse = await fetch(statusUrl);
+
+        console.log("Status Fetch Response:", statusResponse.status);
+
+        if (statusResponse.ok) {
+          try {
+            productStatusBackend = await statusResponse.json();
+            console.log("Product Status:", productStatusBackend);
+          } catch (jsonErr) {
+            console.error("JSON Parse Error for Status:", jsonErr);
+            // Proceed without status if JSON fails
           }
-        } catch (imgError) {
-          console.error("Failed to fetch product image:", imgError);
-          Toast.show({ type: 'error', text1: 'Connection Error', text2: 'Could not fetch images. Check API_URL.' });
+        } else {
+          console.log("Status fetch failed with status:", statusResponse.status);
+          const errorText = await statusResponse.text();
+          console.log("Status fetch error text:", errorText);
+        }
+      } catch (statusErr) {
+        console.error("Failed to fetch product status (Network/Other):", statusErr);
+      }
+
+      // 2. Perform Blockchain Verification (only if key is provided)
+      if (consumerKey) {
+        try {
+          result = await verifyProductOnBlockchain(manufacturerCode, productCode, consumerKey);
+        } catch (bcError) {
+          console.error("Blockchain verification error:", bcError);
+          result = { success: false, message: "Blockchain verification failed.", error: bcError.message };
+        }
+      } else {
+        result = { success: false, isValid: false, message: "Secret Key not provided.", skipped: true };
+      }
+
+      // 3. Check for "Sold but Wrong Code" case
+      if (!result.isValid) {
+        if (productStatusBackend && productStatusBackend.status === 'sold_to_consumer') {
+          result.message = "Product is sold but not authentic because code is wrong";
+          // Keep success/isValid as false to show Red alert, but update message
+        } else if (!consumerKey) {
+          result.message = "Secret Key not provided. Only checking status.";
         }
       }
 
-      setVerificationResult(result);
+      // 4. Fetch Images
+      try {
+        // Only fetch image if we have some level of success or just want to show what we have
+        console.log(`Fetching image from ${API_URL}/product-image/${productCode}...`);
+        const response = await fetch(`${API_URL}/product-image/${encodeURIComponent(productCode)}`);
+
+        if (response.ok) {
+          const imgData = await response.json();
+          if (imgData.imageUrl) setProductImage(imgData.imageUrl);
+          if (imgData.imageUrl2) setProductImage2(imgData.imageUrl2);
+        }
+      } catch (imgError) {
+        console.error("Failed to fetch product image:", imgError);
+      }
+
+      // Combine results
+      setVerificationResult({
+        ...result,
+        productStatus: productStatusBackend
+      });
       setCurrentScreen('RESULT');
 
     } catch (error) {
-      console.error("Verification Error:", error);
+      console.error("Verification Process Error:", error);
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Verification failed.'
+        text2: 'An unexpected error occurred.'
       });
     } finally {
       setIsLoading(false);
@@ -206,16 +245,16 @@ export default function App() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Secret Key</Text>
+                <Text style={styles.label}>Secret Key (Optional)</Text>
                 <TextInput
                   style={styles.input}
                   value={consumerKey}
                   onChangeText={setConsumerKey}
-                  placeholder="Check your email"
+                  placeholder="Enter key to verify authenticity"
                   placeholderTextColor="#9CA3AF"
                   keyboardType="numeric"
                 />
-                <Text style={styles.helperText}>Enter the code sent to your email.</Text>
+                <Text style={styles.helperText}>Leave empty to check sold status only.</Text>
               </View>
             </View>
 
