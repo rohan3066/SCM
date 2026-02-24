@@ -4,8 +4,9 @@ import web3 from "../../ethereum/web3";
 // import "@fortawesome/fontawesome-free/css/all.css"; // Removing old css
 import { toast } from "react-toastify";
 import { FaBoxOpen, FaUserTie, FaIdCard, FaPaperPlane } from "react-icons/fa";
+import API_BASE_URL from "../../config";
 
-const SellToSeller = ({ address }) => {
+const SellToSeller = ({ address, brandName }) => {
   const [prodId, setProdId] = useState("");
   const [sellerId, setSellerId] = useState("");
   const [sellerName, setSellerName] = useState("");
@@ -18,9 +19,27 @@ const SellToSeller = ({ address }) => {
     try {
       const accounts = await web3.eth.getAccounts();
       const manuIns = Manufacturer(address);
+      const trimmedProdId = prodId.trim();
+      const trimmedSellerId = sellerId.trim();
+
       await manuIns.methods
-        .sellToSeller(prodId, sellerId)
+        .sellToSeller(trimmedProdId, trimmedSellerId)
         .send({ from: accounts[0] });
+
+      // Synchronize database status
+      try {
+        await fetch(`${API_BASE_URL}/sell-to-seller`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brand: brandName,
+            prodId: trimmedProdId,
+            sellerId: trimmedSellerId
+          })
+        });
+      } catch (apiErr) {
+        console.error("Failed to update status in DB", apiErr);
+      }
 
       toast.success("Product Sold to Seller Successfully!", {
         position: "top-center",

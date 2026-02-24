@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { FaUserShield, FaIndustry, FaStore } from "react-icons/fa"; // Assuming react-icons is installed or will be. If not, I'll use text or SVG. 
 // Actually, I should check package.json for react-icons. It was there (v5.0.1).
 

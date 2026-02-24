@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { QrReader } from "react-qr-reader";
+import { Html5Qrcode } from "html5-qrcode";
 // import "../style/customer.css"; // Removing old css
 import Manufacturer from "../ethereum/manufacturerIns";
 import factory from "../ethereum/factory";
@@ -9,13 +9,12 @@ import { FaQrcode, FaCheckCircle, FaTimesCircle, FaSearch, FaExclamationTriangle
 import API_BASE_URL from "../config";
 
 const Qrcode = () => {
-  const [fileResult, setFileResult] = useState("");
-  const [webcamResult, setWebcamResult] = useState("");
+
   const [consumerKey, setConsumerKey] = useState("");
   const [scanning, setScanning] = useState(true);
   const [productCode, setProductCode] = useState("");
   const [manufacturerCode, setManufacturerCode] = useState("");
-  const qrRef = useRef(null);
+
   const [authenticationres, setAuthenticationRes] = useState("No result");
   const [active, setActive] = useState("0");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,22 +25,79 @@ const Qrcode = () => {
 
   // const openDialog = () => { ... } // Unused in this refactor if we rely on webcam
 
-  const scanresult = (result, error) => {
+  const scanresult = (result) => {
     if (!!result && !processedRef.current) {
       processedRef.current = true;
-      setWebcamResult(result?.text);
+
       setScanning(false);
-      const results = result.text.split(" ");
-      setManufacturerCode(results[0]);
-      setProductCode(results[1]);
+      const results = result.text.trim().split(/\s+/);
+      const mCode = results[0] || "";
+      const pCode = results[1] || "";
+
+      setManufacturerCode(mCode);
+      setProductCode(pCode);
+      console.log("Scanned Data - Brand:", mCode, "Product ID:", pCode);
       toast.success("QR Code Scanned!", { position: "top-center", autoClose: 1500 });
     }
   };
 
+  React.useEffect(() => {
+    let scanner = null;
+    if (scanning) {
+      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+      scanner = new Html5Qrcode("reader");
+      scanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+          scanresult({ text: decodedText });
+        },
+        (errorMessage) => {
+          // parse error, ignore specific errors if needed
+        }
+      ).catch(err => {
+        console.error("Error starting scanner", err);
+      });
+    }
+
+    return () => {
+      if (scanner) {
+        const stopScanner = async () => {
+          try {
+            // Check if scanner is actually running before trying to stop
+            // State 2 is SCANNING, State 3 is PAUSED
+            if (scanner.getState() >= 2) {
+              await scanner.stop();
+            }
+          } catch (err) {
+            // Silence "not running" errors during cleanup
+            if (!err?.toString().includes("not running")) {
+              console.error("Scanner stop error during cleanup:", err);
+            }
+          } finally {
+            try {
+              await scanner.clear();
+            } catch (e) {
+              // Ignore clear errors if they occur
+            }
+          }
+        };
+        stopScanner();
+      }
+    };
+  }, [scanning]);
+
   const authenticate = async () => {
     setIsLoading(true);
+    setProductStatus(null);
+    setProductImageUrl("");
+    setProductImageUrl2("");
+    setActive("0");
+
     // 1. Ensure we are on Optimism Sepolia
     const chainId = await web3.eth.getChainId();
+    console.log("Current Chain ID:", chainId);
+
     if (chainId !== 11155420n) {
       try {
         await window.ethereum.request({
@@ -62,6 +118,8 @@ const Qrcode = () => {
     const trimmedBrand = manufacturerCode.trim();
     const trimmedProduct = productCode.trim();
 
+    console.log(`Authenticating Brand: "${trimmedBrand}", Product: "${trimmedProduct}"`);
+
     try {
       // Fetch Product Status first to have it available for logic
       let currentStatus = null;
@@ -72,10 +130,11 @@ const Qrcode = () => {
 
         if (statusResponse.ok) {
           currentStatus = await statusResponse.json();
-          console.log("Fetched Product Status:", currentStatus);
+          console.log("Fetched Product Status SUCCESS:", currentStatus);
           setProductStatus(currentStatus);
         } else {
-          console.warn("Status fetch failed:", statusResponse.status);
+          const errorText = await statusResponse.text();
+          console.warn(`Status fetch failed (${statusResponse.status}):`, errorText);
         }
       } catch (e) {
         console.error("Failed to fetch status", e);
@@ -83,11 +142,16 @@ const Qrcode = () => {
 
       // Fetch Image regardless of outcome (if it exists)
       try {
-        const imgRes = await fetch(`${API_BASE_URL}/product-image/${encodeURIComponent(trimmedProduct)}`);
+        const imageUrl = `${API_BASE_URL}/product-image/${encodeURIComponent(trimmedProduct)}`;
+        console.log("Fetching product image from:", imageUrl);
+        const imgRes = await fetch(imageUrl);
         if (imgRes.ok) {
           const imgData = await imgRes.json();
+          console.log("Fetched Product Images SUCCESS:", imgData);
           setProductImageUrl(imgData.imageUrl);
           setProductImageUrl2(imgData.imageUrl2);
+        } else {
+          console.warn(`Image fetch failed (${imgRes.status})`);
         }
       } catch (e) {
         console.error("Failed to fetch product image", e);
@@ -97,7 +161,10 @@ const Qrcode = () => {
         .getManufacturerInstance(trimmedBrand)
         .call();
 
+      console.log(`Manufacturer address for ${trimmedBrand}:`, address);
+
       if (address === "0x0000000000000000000000000000000000000000") {
+        console.error("Brand not found on blockchain");
         toast.error("Brand not found on this network!", { position: "top-center", autoClose: 2500 });
         setIsLoading(false);
         return;
@@ -120,8 +187,12 @@ const Qrcode = () => {
         // Verification failed OR no key provided
         // Check if sold
         if (currentStatus && currentStatus.status === 'sold_to_consumer') {
-          setAuthenticationRes("Product is sold but not authentic because code is wrong");
+          setAuthenticationRes("Product is sold but verification failed (Wrong code)");
           setActive("3");
+        } else if (currentStatus) {
+          // Product exists in DB but not sold yet
+          setAuthenticationRes("Authentic Product (Pending Sale to Consumer)");
+          setActive("3"); // Use warning/info state to show details
         } else {
           setAuthenticationRes("Alert! This Product might be a Counterfeit.");
           setActive("2");
@@ -154,12 +225,7 @@ const Qrcode = () => {
         <div className="flex flex-col items-center">
           <div className="w-full h-64 bg-black rounded-xl border-2 border-brand-orange/50 overflow-hidden relative shadow-[0_0_30px_rgba(255,77,77,0.1)]">
             {scanning ? (
-              <QrReader
-                onResult={scanresult}
-                constraints={{ facingMode: 'environment' }}
-                videoStyle={{ objectFit: 'cover' }}
-                containerStyle={{ width: '100%', height: '100%' }}
-              />
+              <div id="reader" className="w-full h-full"></div>
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gray-900">
                 <FaCheckCircle className="text-green-500 text-5xl mb-2" />

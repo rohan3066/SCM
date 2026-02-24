@@ -21,7 +21,7 @@ const ManufacturerLogin = (props) => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/m_signup`, {
+      await axios.post(`${API_BASE_URL}/m_signup`, {
         id,
         brand,
         city,

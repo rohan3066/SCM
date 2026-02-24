@@ -19,7 +19,7 @@ const SellerLogin = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/s_signup`, {
+      await axios.post(`${API_BASE_URL}/s_signup`, {
         id,
         city,
         pass,

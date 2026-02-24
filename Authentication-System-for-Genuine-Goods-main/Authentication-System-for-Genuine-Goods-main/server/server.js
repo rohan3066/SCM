@@ -151,6 +151,28 @@ app.post("/brand", authenticateToken, (req, res) => {
   );
 });
 
+app.post("/sell-to-seller", (req, res) => {
+  const { brand, prodId, sellerId } = req.body;
+
+  const updateQuery = `
+    UPDATE product 
+    SET status = 'with_seller', current_owner_id = $3, current_owner_type = 'seller', updated_at = now()
+    WHERE manufacturer_brand = $1 AND product_id = $2;
+  `;
+
+  db.query(updateQuery, [brand, prodId, sellerId], (err, result) => {
+    if (err) {
+      console.error("Database update error during sell-to-seller:", err);
+      return res.status(500).send("Database error recording sale to seller");
+    }
+    if (result.rowCount === 0) {
+      return res.status(404).send("Product not found");
+    }
+    console.log(`Product ${prodId} status updated to with_seller for seller ${sellerId}`);
+    res.status(200).send("Product status updated successfully");
+  });
+});
+
 app.post("/sendEmail", (req, res) => {
   const { brand, prodId, email, consumerCode } = req.body;
 

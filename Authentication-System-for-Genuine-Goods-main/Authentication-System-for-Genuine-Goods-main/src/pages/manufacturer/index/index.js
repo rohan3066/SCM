@@ -8,7 +8,7 @@ import {
   BsPeopleFill,
   BsFillArchiveFill,
 } from "react-icons/bs";
-import { FaSignOutAlt, FaPlus, FaUserPlus, FaExchangeAlt, FaBars, FaTimes } from "react-icons/fa";
+import { FaPlus, FaUserPlus, FaExchangeAlt, FaBars, FaTimes } from "react-icons/fa";
 import API_BASE_URL from "../../../config.js";
 
 function Manuf() {
@@ -57,7 +57,7 @@ function Manuf() {
         </div>
         <ul className="p-4 space-y-4">
           <li>
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-orange text-white font-medium shadow-lg hover:bg-orange-600 transition-colors">
+            <a href="#!" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand-orange text-white font-medium shadow-lg hover:bg-orange-600 transition-colors">
               <BsGrid1X2Fill /> Dashboard
             </a>
           </li>

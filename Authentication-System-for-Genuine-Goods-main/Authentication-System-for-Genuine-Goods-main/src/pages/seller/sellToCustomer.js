@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 // import "../../style/form.css"; // Removing old css
 import web3 from "../../ethereum/web3";
 import Manufacturer from "../../ethereum/manufacturerIns";
@@ -14,7 +14,6 @@ const SellToCustomer = () => {
   const [prodId, setProdId] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const signRef = useRef(null);
 
   const sold = async (e) => {
     e.preventDefault();
@@ -40,9 +39,12 @@ const SellToCustomer = () => {
     }
 
     try {
+      const trimmedBrand = brand.trim();
+      const trimmedProdId = prodId.trim();
+
       // 2. Now that we are on the right network, check the brand
       const address = await factory.methods
-        .getManufacturerInstance(brand.trim())
+        .getManufacturerInstance(trimmedBrand)
         .call();
 
       if (address === "0x0000000000000000000000000000000000000000") {
@@ -58,15 +60,15 @@ const SellToCustomer = () => {
       // Attempt backend call but fallback gracefully if it fails? 
       // User didn't ask to fix this but good practice. sticking to existing flow.
       await axios.post(`${API_BASE_URL}/sendEmail`, {
-        brand,
-        prodId,
+        brand: trimmedBrand,
+        prodId: trimmedProdId,
         email,
         consumerCode,
       });
 
       const manuIns = Manufacturer(address);
       await manuIns.methods
-        .sellToConsumer(prodId, consumerCode)
+        .sellToConsumer(trimmedProdId, consumerCode)
         .send({ from: accounts[0] });
 
       toast.success("Product Sold & Code Sent to Email!", {

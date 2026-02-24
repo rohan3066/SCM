@@ -69,7 +69,7 @@ function App() {
               path="/manufacturer/selltoseller"
               element={
                 <ProtectedRoute>
-                  <SellToSeller address={address} />
+                  <SellToSeller address={address} brandName={brandName} />
                 </ProtectedRoute>
               }
             />

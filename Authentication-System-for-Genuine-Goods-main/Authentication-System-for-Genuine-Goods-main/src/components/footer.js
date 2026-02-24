@@ -18,9 +18,9 @@ function Footer() {
         <div className="flex flex-col items-center md:items-start">
           <h2 className="text-xl font-bold text-white mb-4 uppercase tracking-wider">Our Services</h2>
           <ul className="space-y-2 text-gray-400">
-            <li><a href="#" className="hover:text-brand-orange transition-colors">Authenticity Verification</a></li>
-            <li><a href="#" className="hover:text-brand-orange transition-colors">Blockchain Registration</a></li>
-            <li><a href="#" className="hover:text-brand-orange transition-colors">Marketplace Integration</a></li>
+            <li><a href="#!" className="hover:text-brand-orange transition-colors">Authenticity Verification</a></li>
+            <li><a href="#!" className="hover:text-brand-orange transition-colors">Blockchain Registration</a></li>
+            <li><a href="#!" className="hover:text-brand-orange transition-colors">Marketplace Integration</a></li>
           </ul>
         </div>
 

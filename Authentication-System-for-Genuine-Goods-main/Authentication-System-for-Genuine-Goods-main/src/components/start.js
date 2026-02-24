@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Layout from "../components/layout";
 import OpeningCard from "./sections.js";
 // import "../style/home.css"; // Removing old css
 // import "../style/heading.css"; // Removing old css
 
 function Home() {
-  const [isScrolling, setIsScrolling] = useState(false);
 
   // Keep scroll logic if needed, or simplify. For now, let's keep it but style the button.
 
@@ -17,7 +16,6 @@ function Home() {
   };
 
   const smoothScroll = (scrollStep, targetHeight, duration) => {
-    setIsScrolling(true);
     let start = window.scrollY;
     let currentTime = 0;
     const increment = 20;
@@ -28,8 +26,6 @@ function Home() {
       window.scrollTo(0, val);
       if (currentTime < duration) {
         setTimeout(animateScroll, increment);
-      } else {
-        setIsScrolling(false);
       }
     }
     animateScroll();

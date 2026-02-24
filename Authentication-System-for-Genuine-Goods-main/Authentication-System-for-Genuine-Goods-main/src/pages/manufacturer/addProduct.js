@@ -74,8 +74,11 @@ function AddProduct({ address }) {
       const accounts = await web3.eth.getAccounts();
       const manuIns = Manufacturer(address);
 
+      const trimmedId = id.trim();
+      const trimmedBrand = brand.trim();
+
       await manuIns.methods
-        .addProduct(id, name, brand)
+        .addProduct(trimmedId, name, trimmedBrand)
         .send({ from: accounts[0] });
 
       // 3. Save Image Links to Database
@@ -83,8 +86,8 @@ function AddProduct({ address }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          productId: id,
-          brandId: brand,
+          productId: trimmedId,
+          brandId: trimmedBrand,
           imageUrl: imageUrl1,
           imageUrl2: imageUrl2
         })
@@ -95,7 +98,7 @@ function AddProduct({ address }) {
         autoClose: 2500,
       });
 
-      const qrdata = brand + " " + id;
+      const qrdata = trimmedBrand + " " + trimmedId;
       const imageDataURL = await qrcode.toDataURL(qrdata);
       setImageQR(imageDataURL);
 
