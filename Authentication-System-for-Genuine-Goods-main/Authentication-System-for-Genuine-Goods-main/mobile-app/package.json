@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "ethers": "^5.7.2",
-    "expo": "~54.0.32",
+    "expo": "~54.0.33",
     "expo-barcode-scanner": "^13.0.1",
     "expo-camera": "^17.0.10",
     "expo-status-bar": "~3.0.9",
