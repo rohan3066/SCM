@@ -102,4 +102,27 @@ contract FakeProdIden
         }
     }
 
+    // Function to add multiple products at once
+    function addProductsBatch(string[] memory ids, string[] memory names, string[] memory brandNames) public {
+        require(ids.length == names.length && names.length == brandNames.length, "Arrays length mismatch");
+        for (uint i = 0; i < ids.length; i++) {
+            addProduct(ids[i], names[i], brandNames[i]);
+        }
+    }
+
+    // Function to sell multiple products to multiple sellers at once
+    function sellToSellersBatch(string[] memory prodIds, string[] memory sellerIds) public {
+        require(prodIds.length == sellerIds.length, "Arrays length mismatch");
+        for (uint i = 0; i < prodIds.length; i++) {
+            sellToSeller(prodIds[i], sellerIds[i]);
+        }
+    }
+
+    // Function to add multiple sellers at once
+    function addSellersBatch(string[] memory sellerIds) public {
+        for (uint i = 0; i < sellerIds.length; i++) {
+            addSellers(sellerIds[i]);
+        }
+    }
+
 }

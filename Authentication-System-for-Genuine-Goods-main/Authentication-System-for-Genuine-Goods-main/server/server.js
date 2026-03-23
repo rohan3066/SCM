@@ -173,6 +173,32 @@ app.post("/sell-to-seller", (req, res) => {
   });
 });
 
+app.post("/sell-to-seller-batch", async (req, res) => {
+  const { brand, updates } = req.body;
+  // updates is [{prodId, sellerId}, ...]
+  if (!brand || !updates || !Array.isArray(updates)) {
+    return res.status(400).send("Invalid request format");
+  }
+
+  try {
+    await db.query('BEGIN');
+    for (const update of updates) {
+      const updateQuery = `
+        UPDATE product 
+        SET status = 'with_seller', current_owner_id = $3, current_owner_type = 'seller', updated_at = now()
+        WHERE manufacturer_brand = $1 AND product_id = $2;
+      `;
+      await db.query(updateQuery, [brand, update.prodId, update.sellerId]);
+    }
+    await db.query('COMMIT');
+    res.status(200).send("Batch product status updated successfully");
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error("Database update error during batch sell-to-seller:", err);
+    res.status(500).send("Database error recording batch sale to seller");
+  }
+});
+
 app.post("/sendEmail", (req, res) => {
   const { brand, prodId, email, consumerCode } = req.body;
 
@@ -322,6 +348,39 @@ app.post("/save-product-image", (req, res) => {
       res.status(200).send("Product & Images saved successfully");
     });
   });
+});
+
+app.post("/save-product-image-batch", async (req, res) => {
+  const { products } = req.body;
+  // products is [{productId, brandId, imageUrl, imageUrl2}, ...]
+  if (!products || !Array.isArray(products)) {
+    return res.status(400).send("Invalid request format");
+  }
+
+  try {
+    await db.query('BEGIN');
+    for (const prod of products) {
+      const img2 = prod.imageUrl2 || null;
+
+      // 1. Save Images
+      const imageQuery = "INSERT INTO product_images (product_id, image_url, image_url_2, brand_id) VALUES ($1, $2, $3, $4) ON CONFLICT (product_id) DO UPDATE SET image_url = $2, image_url_2 = $3";
+      await db.query(imageQuery, [prod.productId, prod.imageUrl, img2, prod.brandId]);
+
+      // 2. Create Product Entry
+      const productQuery = `
+        INSERT INTO product (manufacturer_brand, product_id, status)
+        VALUES ($1, $2, 'manufactured')
+        ON CONFLICT (manufacturer_brand, product_id) DO NOTHING;
+      `;
+      await db.query(productQuery, [prod.brandId, prod.productId]);
+    }
+    await db.query('COMMIT');
+    res.status(200).send("Batch products & images saved successfully");
+  } catch (err) {
+    await db.query('ROLLBACK');
+    console.error("Error saving batch product images:", err);
+    res.status(500).send("Error saving batch data");
+  }
 });
 
 // Endpoint to get product image

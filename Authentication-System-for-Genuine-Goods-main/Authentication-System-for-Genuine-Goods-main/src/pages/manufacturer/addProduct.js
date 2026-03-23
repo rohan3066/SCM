@@ -8,7 +8,8 @@ import Manufacturer from "../../ethereum/manufacturerIns";
 // import "@fortawesome/fontawesome-free/css/all.css"; // Removing old css
 // import { PiArrowCircleLeftFill } from "react-icons/pi";
 import { toast } from "react-toastify";
-import { FaBox, FaTag, FaBarcode, FaDollarSign, FaQrcode, FaDownload, FaImage } from "react-icons/fa";
+import { FaBox, FaTag, FaBarcode, FaDollarSign, FaQrcode, FaDownload, FaImage, FaFileUpload } from "react-icons/fa";
+import { parseCSV } from "../../utils/csvParser";
 
 import API_BASE_URL from "../../config";
 
@@ -24,6 +25,7 @@ function AddProduct({ address }) {
   const [productImage2, setProductImage2] = useState(null); // New State for 2nd Image
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
   const qrDescriptionRef = useRef(null);
 
   const handleImageUpload = async (file) => {
@@ -116,6 +118,102 @@ function AddProduct({ address }) {
     setIsLoading(false);
   };
 
+  const handleBulkUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!productImage) {
+      toast.error("Please select a Primary Image before uploading CSV", { position: "top-center" });
+      event.target.value = null;
+      return;
+    }
+
+    setIsBulkLoading(true);
+    try {
+      const data = await parseCSV(file);
+      if (data.length === 0) {
+        toast.error("CSV is empty", { position: "top-center" });
+        setIsBulkLoading(false);
+        return;
+      }
+
+      // Expected headers: product_id, product_name, brand_name, price
+      const validRows = data.filter(row => row.product_id && row.product_name && row.brand_name);
+      
+      if (validRows.length === 0) {
+        toast.error("No valid product_id, product_name, or brand_name found in CSV", { position: "top-center" });
+        setIsBulkLoading(false);
+        return;
+      }
+
+      // 1. Upload Images (Once for all bulk products)
+      let imageUrl1 = "";
+      let imageUrl2 = "";
+      try {
+        imageUrl1 = await handleImageUpload(productImage);
+      } catch (err) {
+        throw new Error("Failed to upload primary image: " + err.message);
+      }
+      if (productImage2) {
+        try {
+          imageUrl2 = await handleImageUpload(productImage2);
+        } catch (err) {
+          throw new Error("Failed to upload second image: " + err.message);
+        }
+      }
+
+      const ids = validRows.map(row => row.product_id.trim());
+      const names = validRows.map(row => row.product_name);
+      const brands = validRows.map(row => row.brand_name.trim());
+
+      // 2. Smart Contract Batch Call
+      const accounts = await web3.eth.getAccounts();
+      const manuIns = Manufacturer(address);
+
+      await manuIns.methods
+        .addProductsBatch(ids, names, brands)
+        .send({ from: accounts[0] });
+
+      // 3. Save Image Links to Database
+      const productsPayload = validRows.map(row => ({
+        productId: row.product_id.trim(),
+        brandId: row.brand_name.trim(),
+        imageUrl: imageUrl1,
+        imageUrl2: imageUrl2
+      }));
+
+      await fetch(`${API_BASE_URL}/save-product-image-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ products: productsPayload })
+      });
+
+      toast.success(`${validRows.length} Products & Images Added Successfully!`, {
+        position: "top-center",
+        autoClose: 3500,
+      });
+
+      // Show latest generated valid QR for convenience
+      const lastRow = validRows[validRows.length - 1];
+      const qrdata = lastRow.brand_name.trim() + " " + lastRow.product_id.trim();
+      const imageDataURL = await qrcode.toDataURL(qrdata);
+      setImageQR(imageDataURL);
+
+      if (qrDescriptionRef.current) {
+        qrDescriptionRef.current.innerHTML = "Click the QR Code to Download (Last Product added)";
+      }
+
+    } catch (error) {
+      console.error("Bulk upload error:", error);
+      toast.error("Error in Bulk Upload: " + error.message, {
+        position: "top-center",
+        autoClose: 3500,
+      });
+    }
+    setIsBulkLoading(false);
+    event.target.value = null;
+  };
+
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl w-full bg-brand-darker p-8 md:p-12 rounded-2xl shadow-2xl border border-brand-gray/30 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row gap-8">
@@ -128,14 +226,41 @@ function AddProduct({ address }) {
           <div className="text-left">
             <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
               <FaBox className="text-brand-orange" />
-              Add Product
+              Add Product(s)
             </h2>
             <p className="mt-2 text-sm text-gray-400">
-              Register a new product on the blockchain.
+              Register a new product or bulk products on the blockchain.
             </p>
           </div>
 
           <form className="space-y-4" onSubmit={generateQRCode}>
+
+            <div className="bg-brand-dark p-4 rounded-xl border border-brand-gray/50 mb-6 flex flex-col items-center justify-center space-y-3">
+              <label className="text-sm text-gray-400 font-medium">Bulk Add Products (CSV)</label>
+              <div className="relative group w-full">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaFileUpload className="text-brand-orange" />
+                </div>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleBulkUpload}
+                  disabled={isBulkLoading || isLoading}
+                  className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-orange/20 file:text-brand-orange hover:file:bg-brand-orange/30 pl-10 border border-brand-gray/50 rounded-xl"
+                />
+              </div>
+              <span className="text-xs text-gray-400 text-center">
+                CSV format: product_id, product_name, brand_name, price<br/>
+                <span className="text-brand-orange">Note: Upload images below FIRST, they will be applied to all bulk products!</span>
+              </span>
+              {isBulkLoading && <p className="text-brand-orange text-sm animate-pulse">Processing Bulk Upload...</p>}
+            </div>
+
+            <div className="flex items-center justify-center space-x-4">
+              <hr className="w-full border-brand-gray/30" />
+              <span className="text-gray-500 text-sm">OR ADD SINGLE</span>
+              <hr className="w-full border-brand-gray/30" />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative group">

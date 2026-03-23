@@ -1,9 +1,11 @@
 import path from 'path';
-import fs from 'fs-extra'
+import fs from 'fs-extra';
 import solc from 'solc';
 
 fs.removeSync('build');
-const source = fs.readFileSync('D:\\PBL FINAL\\Fake-Product-Identification\\src\\ethereum\\contracts\\FakeProdIden.sol', 'utf-8');
+const __dirname = path.resolve(); // Resolving root of the src folder essentially from execution context
+const contractPath = path.resolve('contracts', 'FakeProdIden.sol');
+const source = fs.readFileSync(contractPath, 'utf-8');
 
 const input = {
     language: 'Solidity',
