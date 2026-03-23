@@ -1,7 +1,15 @@
 import { Web3 } from "web3";
 import HDWalletProvider from "@truffle/hdwallet-provider";
-import manuFactory from "./build/manufacturerFactory.json" assert { type: "json" };
-require("dotenv").config();
+import dotenv from "dotenv";
+import path from "path";
+import fs from "fs";
+
+// Load JSON safely in newer Node.js
+const manuFactoryPath = path.resolve(process.cwd(), "build/manufacturerFactory.json");
+const manuFactory = JSON.parse(fs.readFileSync(manuFactoryPath, "utf8"));
+
+// Load root .env
+dotenv.config({ path: path.resolve(process.cwd(), "../../.env") });
 
 const provider = new HDWalletProvider(process.env.PHRASE, process.env.PROVIDER);
 
