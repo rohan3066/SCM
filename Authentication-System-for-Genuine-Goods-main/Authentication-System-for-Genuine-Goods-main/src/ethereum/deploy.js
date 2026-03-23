@@ -31,3 +31,5 @@ const deploy = async () => {
     provider.engine.stop();
   }
 };
+
+deploy();
